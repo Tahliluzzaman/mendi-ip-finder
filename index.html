@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Mendi IP Finder — find a website's IPv4 address and approximate IP location.">
+  <title>Mendi IP Finder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #101827, #172554);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%; max-width: 520px; background: #1e293b;
+      border: 1px solid #334155; border-radius: 22px; padding: 26px;
+      box-shadow: 0 20px 60px #0005;
+    }
+    .icon {
+      width: 64px; height: 64px; margin: 0 auto 16px; display: flex;
+      justify-content: center; align-items: center; background: #2563eb;
+      border-radius: 18px; font-size: 30px;
+    }
+    h1 { text-align: center; font-size: 27px; margin-bottom: 8px; }
+    .subtitle { color: #94a3b8; text-align: center; font-size: 14px; line-height: 1.6; margin-bottom: 26px; }
+    label { display: block; font-size: 14px; margin-bottom: 9px; color: #cbd5e1; }
+    input {
+      width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #475569;
+      background: #0f172a; color: white; font-size: 16px; outline: none; margin-bottom: 14px;
+    }
+    input:focus { border-color: #60a5fa; }
+    button {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      background: #3b82f6; color: white; font-size: 16px; font-weight: bold;
+      cursor: pointer; transition: background .2s;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .result {
+      display: none; margin-top: 22px; padding: 18px; border-radius: 14px;
+      background: #0f172a; border: 1px solid #334155; overflow-wrap: anywhere;
+    }
+    .result-label { font-size: 12px; color: #94a3b8; margin-bottom: 7px; }
+    .ip { color: #60a5fa; font-size: 21px; font-weight: bold; margin-bottom: 16px; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .detail { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 11px; min-width: 0; }
+    .detail .result-label { margin-bottom: 5px; }
+    .detail-value { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+    .copy { background: #334155; font-size: 14px; padding: 11px; margin-top: 10px; }
+    .copy:hover { background: #475569; }
+    .map-title { margin: 18px 0 10px; font-size: 15px; }
+    .map-frame { width: 100%; height: 260px; border: 0; border-radius: 12px; background: #1e293b; }
+    .map-link { display: block; color: #93c5fd; font-size: 13px; margin-top: 10px; text-align: center; }
+    .message { margin-top: 16px; font-size: 13px; line-height: 1.5; color: #fbbf24; text-align: center; }
+    .notice { color: #cbd5e1; font-size: 12px; line-height: 1.6; margin-top: 12px; }
+    footer { text-align: center; margin-top: 25px; font-size: 12px; color: #94a3b8; line-height: 1.9; }
+    footer strong { color: #e2e8f0; }
+    @media (max-width: 380px) { .container { padding: 18px; } .details { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="icon" aria-hidden="true">🌐</div>
+    <h1>Mendi IP Finder</h1>
+    <p class="subtitle">Find a website's IPv4 address and view its approximate IP location on a map.</p>
+
+    <form id="ipForm">
+      <label for="website">Website Address</label>
+      <input id="website" type="text" placeholder="e.g. google.com" autocomplete="url" spellcheck="false" required>
+      <button id="findBtn" type="submit">🔍 Find IP & Location</button>
+    </form>
+
+    <section class="result" id="result" aria-live="polite">
+      <div class="result-label">WEBSITE</div>
+      <div id="siteName" style="margin-bottom:16px"></div>
+      <div class="result-label">IP ADDRESS (IPv4)</div>
+      <div class="ip" id="ipAddress"></div>
+      <button class="copy" id="copyBtn" type="button">📋 Copy IP Address</button>
+
+      <div class="details">
+        <div class="detail"><div class="result-label">CITY</div><div class="detail-value" id="city">—</div></div>
+        <div class="detail"><div class="result-label">REGION</div><div class="detail-value" id="region">—</div></div>
+        <div class="detail"><div class="result-label">COUNTRY</div><div class="detail-value" id="country">—</div></div>
+        <div class="detail"><div class="result-label">ISP / NETWORK</div><div class="detail-value" id="org">—</div></div>
+        <div class="detail"><div class="result-label">TIMEZONE</div><div class="detail-value" id="timezone">—</div></div>
+        <div class="detail"><div class="result-label">COORDINATES</div><div class="detail-value" id="coordinates">—</div></div>
+      </div>
+
+      <h2 class="map-title">📍 Approximate Location Map</h2>
+      <iframe id="mapFrame" class="map-frame" title="Approximate IP location map" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      <a id="mapLink" class="map-link" href="#" target="_blank" rel="noopener noreferrer">Open larger map ↗</a>
+      <button class="copy" id="copyDetailsBtn" type="button">📋 Copy Location Details</button>
+      <p class="notice">IP locations are estimates and may show a network gateway or provider location rather than the visitor's actual location. This tool cannot reveal an exact home address or GPS position.</p>
+    </section>
+
+    <p class="message" id="message" role="status"></p>
+    <footer>
+      <strong>Mendi IP Finder</strong><br>
+      Developed by <strong>Tahlil</strong><br>
+      AI Assistance: <strong>ChatGPT (OpenAI)</strong><br>
+      Built with HTML, CSS &amp; JavaScript<br>
+      DNS lookup powered by Google Public DNS<br>
+      Location lookup powered by ipdata.free · Map © OpenStreetMap contributors
+    </footer>
+  </main>
+
+  <script>
+    const form = document.getElementById("ipForm");
+    const input = document.getElementById("website");
+    const button = document.getElementById("findBtn");
+    const result = document.getElementById("result");
+    const message = document.getElementById("message");
+    let currentIP = "";
+    let locationSummary = "";
+
+    function normalizeDomain(value) {
+      let domain = value.trim().replace(/^https?:\/\//i, "").split(/[/?#]/)[0];
+      if (domain.includes(":")) domain = domain.split(":")[0];
+      return domain.replace(/\.$/, "");
+    }
+
+    function isValidDomain(domain) {
+      if (!domain || domain.length > 253 || !domain.includes(".")) return false;
+      return domain.split(".").every(part =>
+        part.length > 0 && part.length <= 63 &&
+        /^[a-zA-Z0-9-]+$/.test(part) &&
+        !part.startsWith("-") && !part.endsWith("-")
+      );
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent =
+        value === undefined || value === null || value === "" ? "Not available" : String(value);
+    }
+
+    async function getLocation(ip) {
+      // Public no-key endpoint tested by the developer. Availability/CORS may vary.
+      const response = await fetch("https://ipdata.free/" + encodeURIComponent(ip), {
+        headers: { "Accept": "application/json" }
+      });
+      if (!response.ok) throw new Error("Location service returned HTTP " + response.status);
+      return await response.json();
+    }
+
+    function showMap(lat, lon) {
+      const latitude = Number(lat);
+      const longitude = Number(lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+          latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        document.getElementById("mapFrame").removeAttribute("src");
+        document.getElementById("mapLink").style.display = "none";
+        return false;
+      }
+      const delta = 0.08;
+      const bbox = [longitude - delta, latitude - delta, longitude + delta, latitude + delta].join(",");
+      document.getElementById("mapFrame").src =
+        "https://www.openstreetmap.org/export/embed.html?bbox=" +
+        encodeURIComponent(bbox) + "&layer=mapnik&marker=" +
+        encodeURIComponent(latitude + "," + longitude);
+      document.getElementById("mapLink").href =
+        "https://www.openstreetmap.org/?mlat=" + encodeURIComponent(latitude) +
+        "&mlon=" + encodeURIComponent(longitude) + "#map=10/" +
+        encodeURIComponent(latitude) + "/" + encodeURIComponent(longitude);
+      document.getElementById("mapLink").style.display = "block";
+      return true;
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const domain = normalizeDomain(input.value);
+      result.style.display = "none";
+      currentIP = "";
+      locationSummary = "";
+      message.style.color = "#fbbf24";
+
+      if (!isValidDomain(domain)) {
+        message.textContent = "Enter a valid domain, such as google.com.";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Searching...";
+      message.textContent = "Looking up DNS records...";
+
+      try {
+        const dnsUrl = "https://dns.google/resolve?name=" + encodeURIComponent(domain) + "&type=A";
+        const dnsResponse = await fetch(dnsUrl);
+        if (!dnsResponse.ok) throw new Error("DNS service unavailable");
+        const dnsData = await dnsResponse.json();
+        const record = (dnsData.Answer || []).find(item =>
+          item.type === 1 &&
+          /^\d{1,3}(\.\d{1,3}){3}$/.test(item.data) &&
+          item.data.split(".").every(part => Number(part) <= 255)
+        );
+        if (!record) throw new Error("No IPv4 address found");
+
+        currentIP = record.data;
+        document.getElementById("siteName").textContent = domain;
+        document.getElementById("ipAddress").textContent = currentIP;
+        result.style.display = "block";
+        message.textContent = "IP found. Looking up approximate location...";
+
+        try {
+          const geo = await getLocation(currentIP);
+          // API response fields follow the ipdata.free sample response.
+          setText("city", geo.city);
+          setText("region", geo.region);
+          setText("country", geo.country);
+          setText("org", geo.org || geo.asn);
+          setText("timezone", geo.timezone);
+          const hasCoords = geo.latitude !== undefined && geo.longitude !== undefined &&
+            geo.latitude !== null && geo.longitude !== null;
+          setText("coordinates", hasCoords ? Number(geo.latitude).toFixed(4) + ", " + Number(geo.longitude).toFixed(4) : null);
+          showMap(geo.latitude, geo.longitude);
+          locationSummary = [
+            "Website: " + domain, "IP: " + currentIP,
+            "City: " + (geo.city || "Not available"),
+            "Region: " + (geo.region || "Not available"),
+            "Country: " + (geo.country || "Not available"),
+            "ISP / Network: " + (geo.org || geo.asn || "Not available"),
+            "Timezone: " + (geo.timezone || "Not available"),
+            "Coordinates: " + (hasCoords ? geo.latitude + ", " + geo.longitude : "Not available")
+          ].join("\n");
+          message.style.color = "#4ade80";
+          message.textContent = "IP and approximate location found!";
+        } catch (geoError) {
+          ["city", "region", "country", "org", "timezone", "coordinates"].forEach(id => setText(id, null));
+          document.getElementById("mapFrame").removeAttribute("src");
+          document.getElementById("mapLink").style.display = "none";
+          locationSummary = "Website: " + domain + "\nIP: " + currentIP + "\nLocation lookup failed. The service may be unavailable or may block browser requests.";
+          message.style.color = "#fbbf24";
+          message.textContent = "IP found, but location lookup failed. The free service may be unavailable or block browser requests.";
+        }
+      } catch (error) {
+        message.style.color = "#fbbf24";
+        message.textContent = "Could not find an IPv4 address. Check the domain or try again later.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "🔍 Find IP & Location";
+      }
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      if (!currentIP) return;
+      try {
+        await navigator.clipboard.writeText(currentIP);
+        message.style.color = "#4ade80";
+        message.textContent = "IP address copied!";
+      } catch {
+        message.style.color = "#fbbf24";
+        message.textContent = "Copy unavailable. Select and copy the IP manually.";
+      }
+    });
+
+    document.getElementById("copyDetailsBtn").addEventListener("click", async () => {
+      if (!locationSummary) return;
+      try {
+        await navigator.clipboard.writeText(locationSummary);
+        message.style.color = "#4ade80";
+        message.textContent = "Location details copied!";
+      } catch {
+        message.style.color = "#fbbf24";
+        message.textContent = "Copy unavailable. Select the details manually.";
+      }
+    });
+  </script>
+</body>
+</html>
