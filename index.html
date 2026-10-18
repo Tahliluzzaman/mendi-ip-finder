@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Mendi IP Finder — look up a website's IPv4 address using DNS.">
+  <title>Mendi IP Finder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #101827, #172554);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 460px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 20px 60px #0005;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #2563eb;
+      border-radius: 18px;
+      font-size: 30px;
+    }
+    h1 { text-align: center; font-size: 27px; margin-bottom: 8px; }
+    .subtitle {
+      color: #94a3b8;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    label { display: block; font-size: 14px; margin-bottom: 9px; color: #cbd5e1; }
+    input {
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: white;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 14px;
+    }
+    input:focus { border-color: #60a5fa; }
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: #3b82f6;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .result {
+      display: none;
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      overflow-wrap: anywhere;
+    }
+    .result-label { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+    .ip { color: #60a5fa; font-size: 21px; font-weight: bold; margin-bottom: 16px; }
+    .copy { background: #334155; font-size: 14px; padding: 11px; }
+    .copy:hover { background: #475569; }
+    .message {
+      margin-top: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #fbbf24;
+      text-align: center;
+    }
+    footer {
+      text-align: center;
+      margin-top: 25px;
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.9;
+    }
+    footer strong { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="icon" aria-hidden="true">🌐</div>
+    <h1>Mendi IP Finder</h1>
+    <p class="subtitle">Find a website's IPv4 address with a simple DNS lookup.</p>
+
+    <form id="ipForm">
+      <label for="website">Website Address</label>
+      <input
+        id="website"
+        type="text"
+        placeholder="e.g. google.com"
+        autocomplete="url"
+        spellcheck="false"
+        required
+      >
+      <button id="findBtn" type="submit">🔍 Find IP Address</button>
+    </form>
+
+    <section class="result" id="result" aria-live="polite">
+      <div class="result-label">WEBSITE</div>
+      <div id="siteName" style="margin-bottom:16px"></div>
+      <div class="result-label">IP ADDRESS (IPv4)</div>
+      <div class="ip" id="ipAddress"></div>
+      <button class="copy" id="copyBtn" type="button">📋 Copy IP Address</button>
+    </section>
+
+    <p class="message" id="message" role="status"></p>
+
+    <footer>
+      <strong>Mendi IP Finder</strong><br>
+      Developed by <strong>Tahlil</strong><br>
+      AI Assistance: <strong>ChatGPT (OpenAI)</strong><br>
+      Built with HTML, CSS &amp; JavaScript<br>
+      DNS lookup powered by Google Public DNS
+    </footer>
+  </main>
+
+  <script>
+    const form = document.getElementById("ipForm");
+    const input = document.getElementById("website");
+    const button = document.getElementById("findBtn");
+    const result = document.getElementById("result");
+    const message = document.getElementById("message");
+    let currentIP = "";
+
+    function normalizeDomain(value) {
+      let domain = value.trim().replace(/^https?:\/\//i, "").split(/[/?#]/)[0];
+      if (domain.includes(":")) domain = domain.split(":")[0];
+      return domain.replace(/\.$/, "");
+    }
+
+    function isValidDomain(domain) {
+      if (!domain || domain.length > 253 || !domain.includes(".")) return false;
+      return domain.split(".").every(part =>
+        part.length > 0 &&
+        part.length <= 63 &&
+        /^[a-zA-Z0-9-]+$/.test(part) &&
+        !part.startsWith("-") &&
+        !part.endsWith("-")
+      );
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const domain = normalizeDomain(input.value);
+      result.style.display = "none";
+      currentIP = "";
+      message.style.color = "#fbbf24";
+
+      if (!isValidDomain(domain)) {
+        message.textContent = "Enter a valid domain, such as google.com.";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Searching...";
+      message.textContent = "Looking up DNS records...";
+
+      try {
+        const url =
+          "https://dns.google/resolve?name=" +
+          encodeURIComponent(domain) + "&type=A";
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("DNS service unavailable");
+
+        const data = await response.json();
+        const record = (data.Answer || []).find(item =>
+          item.type === 1 &&
+          /^\d{1,3}(\.\d{1,3}){3}$/.test(item.data) &&
+          item.data.split(".").every(part => Number(part) <= 255)
+        );
+
+        if (!record) throw new Error("No IPv4 address found");
+
+        currentIP = record.data;
+        document.getElementById("siteName").textContent = domain;
+        document.getElementById("ipAddress").textContent = currentIP;
+        result.style.display = "block";
+        message.style.color = "#4ade80";
+        message.textContent = "IP address found successfully!";
+      } catch (error) {
+        message.style.color = "#fbbf24";
+        message.textContent =
+          "Could not find an IPv4 address. Check the domain or try again later.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "🔍 Find IP Address";
+      }
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      if (!currentIP) return;
+      try {
+        await navigator.clipboard.writeText(currentIP);
+        message.style.color = "#4ade80";
+        message.textContent = "IP address copied!";
+      } catch {
+        message.style.color = "#fbbf24";
+        message.textContent = "Copy unavailable. Select and copy the IP manually.";
+      }
+    });
+  </script>
+</body>
+</html>
